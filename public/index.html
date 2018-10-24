@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html>
     <head>
         <title>Ship Cargo API</title>
@@ -10,17 +11,134 @@
     <body>
         <div class="jumbotron mainTron">
             <h1 class="display-4">Dubbs Ship Cargo Management API</h1>
-            <p>This API may be used to create, read, update, and delete ship 
+            <hr class="my-4">
+            <p class="lead">This API may be used to create, read, update, and delete ship 
                 and cargo information</p>
         </div>
 
-        <!-- SHIP ROUTES-->
+        <div>
+                <h1 class="display-4" id="routes">Routes</h1>
+        </div>
 
+        <!-- SHIP ROUTES-->
+        <div class = "card">
+            <div class="card-header">
+                <h1>Ships</h1>
+            </div>
+            <div class="card-body">
+                <ul>
+                    <li>GET /ships</li>
+                    <ul>
+                        <li>Behavior: Returns a list of ships currently stored in the datastore.</li>
+                        <li>Success Response: 200 OK</li>
+                        <li>Success Returns: Array of JSON objects: <br/>
+                        - e.g. [{}]
+                        <br/>
+                        </li>
+                    </ul>
+                    <br/>
+
+                    <li>GET /ships/{ship_id}</li>
+                    <ul>
+                        <li>Behavior: Returns the ship specified by the id passed in the URL.</li>
+                        <li>Success Response: 200 OK</li>
+                        <li>Success Returns: A JSON object: <br/>
+                            - e.g. {}
+                        </li>
+                    </ul>
+                    <br/>
+                
+                    <li>POST /ships</li>
+                    <ul>
+                        <li>Data to Provide in Body:</li>
+                        <ul>
+                            <li>
+                                {
+                                    "name": "[ship name -> String]",
+                                    "type": "[ship type -> String]",
+                                    "length": [ship length -> Integer]
+                                }
+                            </li>
+                        </ul>
+                        <li>Behavior: Adds a new Ship to the datastore.</li>
+                        <li>Success Response: 200 OK</li>
+                        <li>Success Returns: id of newly created slip: e.g. { "id": 6019951286550528 }</li>
+                    </ul>
+                    <br/>
+
+                    <li>PUT /ships/{ship_id}</li>
+                    <ul>
+                        <li>Data to Provide in Body:</li>
+                        <ul>
+                            <li>{
+                                    "name": "[ship name -> String]",
+                                    "type": "[ship type -> String]",
+                                    "length": "[ship length -> Integer]"
+                                }
+                            </li>
+                        </ul>
+                        <li>Behavior: Updates the ship's properities per the body parameters (i.e. those of the slip specified by the id passed in the URL).</li>
+                        <li>Success Response: 200 OK</li>
+                    </ul>
+                    <br/>
+
+                    <li>DELETE /ships/{ship_id}</li>
+                    <ul>
+                        <li>Behavior: Deletes the ship spefied by the id passed in the URL.<br/>
+                            - If the ship was docked in a slip, then the slip is freed.
+                        </li>
+                        <li>Success Response: 200 OK</li>
+                    </ul>
+                </ul>
+            </div> 
+        </div>
 
         <!-- CARGO ROUTES-->
+        <div class = "card">
+            <div class="card-header">
+                <h1>Cargo</h1>
+            </div>
+            <div class="card-body">
+                <ul>
+                    <li>GET /cargo</li>
+                    <ul>
+                        <li>Behavior: Returns a list of cargo currently stored in the datastore.</li>
+                        <li>Success Response: 200 OK</li>
+                        <li>Success Returns: Array of JSON objects: <br/>
+                            - e.g. [{}]
+                            <br/>
+                        </li>
+                    </ul>
+                    <li>GET /cargo/{cargo_id}</li>
+                    <ul>
+                        <li>Behavior: Returns the cargo specified by the id passed in the URL.</li>
+                        <li>Success Response: 200 OK</li>
+                        <li>Success Returns: A JSON object: <br/>
+                            - e.g. {}
+                        </li>
+                    </ul>
+                </ul>
+            </div>
+        </div>
 
         <!--ADDITIONAL ROUTES-->
+        <div class = "card">
+            <div class="card-header">
+                <h1>Additonal Routes</h1>
+            </div>
+            <div class="card-body">
+                
+            </div>
+        </div>
 
-        
     </body>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" 
+    integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" 
+    crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" 
+    integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" 
+    crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" 
+    integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" 
+    crossorigin="anonymous"></script>
 </html>

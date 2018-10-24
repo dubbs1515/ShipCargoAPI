@@ -1,3 +1,12 @@
+.mainTron {
+    background-color: #064273!important;
+    color: whitesmoke;
+}
+
+hr {
+    background-color: black;
+}
+
 .card {
     margin: 50px auto;
     width: 85%;
@@ -11,4 +20,8 @@
 .card-body {
     background-color:rgb(42, 119, 136) !important;
     color: whitesmoke;
+}
+
+#routes {
+    text-align: center;
 }

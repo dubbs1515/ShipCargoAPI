@@ -74,13 +74,33 @@ function get_entity(kind, id) {
     return datastore.runQuery(q).then((entity) => {                 
         return entity[0].map(fromDataStore);
     });
-
 }
 
 
 /*******************************************************************************
  * CONTROLLER FUNCTIONS (Handle routing)
  ******************************************************************************/
+/*******************************************************************************
+ * Route: GET /ships
+ * Description: Returns a list of ships currently stored in the datastore.
+ *****************************************************************************/
+router.get('/ships', function(req, res) {
+    const ships = get_entities(SHIP)
+    .then((ships) => {
+        res.status(200).json(ships);
+    });
+});
+
+/*******************************************************************************
+ * Route: GET /cargo
+ * Description: Returns a list of cargoes currently stored in the datastore.
+ *****************************************************************************/
+router.get('/cargo', function(req, res) {
+    const cargo = get_entities(CARGO)
+    .then((cargo) => {
+        res.status(200).json(cargo);
+    });
+});
 
 /*******************************************************************************
  * END OF CONTROLLER FUNCTIONS
