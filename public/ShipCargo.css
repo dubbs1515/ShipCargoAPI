@@ -1,0 +1,14 @@
+.card {
+    margin: 50px auto;
+    width: 85%;
+}
+
+.card-header {
+    background-color:#a3c1ad!important;
+    color: whitesmoke;
+}
+
+.card-body {
+    background-color:rgb(42, 119, 136) !important;
+    color: whitesmoke;
+}
