@@ -103,6 +103,8 @@ router.get('/', function(req, res) {
 router.get('/:id', function(req, res) {
     const ship = get_ship(req.params.id)
     .then((ship) => {
+        // Add self link
+        ship[0].self = req.protocol + "://" + ROOT_URL + "ships/" + ship[0].id;
         res.status(200).json(ship[0]);
     });
 });

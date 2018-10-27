@@ -105,6 +105,8 @@ router.get('/', function(req, res) {
 router.get('/:id', function(req, res) {
     const cargo = get_cargo(req.params.id)
     .then((cargo) => {
+        // Add self link
+        cargo[0].self = req.protocol + "://" + ROOT_URL + "cargo/" + cargo[0].id;
         res.status(200).json(cargo[0]);
     });
 });
