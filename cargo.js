@@ -43,6 +43,17 @@ function get_cargoes(req) {
 }
 
 
+/***********************************************************************************
+ * Name: delete_cargo
+ * Description: Deletes the cargo specified by the id argument.
+ **********************************************************************************/
+// Pass kind of entity kind (i.e. SHIP or SLIP)
+function delete_cargo(id) {
+    const key = datastore.key([CARGO, parseInt(id, 10)]);
+    return datastore.delete(key);
+}
+
+
 /*******************************************************************************
  * Name: get_cargo
  * Description: Returns the entity held in the datastore, as specified by the
@@ -67,6 +78,23 @@ function post_cargo(weight, content, delivery_date) {
     "delivery_date": delivery_date};
     return datastore.save({"key": key, "data": new_ship})
         .then(() => {return key}); // Return key of new ship
+}
+
+
+/******************************************************************************
+ * Route: put_carrier
+ * Description: Add carrier information to a cargo item.
+ *****************************************************************************/
+function put_carrier(cargo_id, ship_id) {
+
+}
+
+/******************************************************************************
+ * Route: delete_carrier
+ * Description: Remove carrier information from a cargo item.
+ *****************************************************************************/
+function delete_carrier(cargo_id, ship_id) {
+
 }
 
 /*******************************************************************************
@@ -98,7 +126,7 @@ router.get('/', function(req, res) {
 });
 
 
-/*******************************************************************************
+/******************************************************************************
  * Route: GET /id
  * Description: Returns the ship entity specified by the id parameter.
  *****************************************************************************/
@@ -111,10 +139,10 @@ router.get('/:id', function(req, res) {
     });
 });
 
-/***********************************************************************************
+/******************************************************************************
  * Route: POST /
  * Description: Add a new ship to the datastore.
- **********************************************************************************/
+ *****************************************************************************/
 router.post('/', function(req, res) {
     if((typeof req.body.weight != "number") || (typeof req.body.content != "string")
      || (typeof req.body.delivery_date != "string"))
@@ -130,8 +158,23 @@ router.post('/', function(req, res) {
     }
 });
 
+
+/******************************************************************************
+ * Route: DELETE /:id
+ * Description: Deletes a cargo by id.
+ *****************************************************************************/
+router.delete('/:id', function(req,res) {
+    delete_cargo(req.params.id)
+    .then(res.status(200).end());
+}); 
+
+
 /*******************************************************************************
  * END OF CONTROLLER FUNCTIONS
  ******************************************************************************/
 
  module.exports = router;
+ /*module.exports = {
+     get_cargo: get_cargo,
+     put_carrier: put_carrier
+ }*/

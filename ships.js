@@ -4,7 +4,8 @@ const bodyParser = require('body-parser');
 const ds = require('./datastore');
 const datastore = ds.datastore;
 const SHIP = "Ship"; // Datastore Kind (akin to RDB tables)
-
+let cargo_mod = require('./cargo');
+let get_cargo = cargo_mod.get_cargo;
 
 const PAGE_LIMIT = 3;   // Set pagination Limit
 
@@ -64,11 +65,75 @@ function get_ship(id) {
  **********************************************************************************/
 function post_ship(name, type, length) {
     let key = datastore.key(SHIP); // Key creation
-    const new_ship = {"name": name, "type": type, "length": length, "cargo": []};
+    const new_ship = {"name": name, "type": type, "length": length};
     return datastore.save({"key": key, "data": new_ship})
         .then(() => {return key}); // Return key of new ship
 }
 
+
+
+/***********************************************************************************
+ * Name: put_ship
+ * Description: Add a ship to the datastore (cannot modify cargo directly here).
+ **********************************************************************************/
+function put_ship(id, name, type, length) {
+    const key = datastore.key([SHIP, parseInt(id,10)]);
+    const ship = {"name": name, "type": type, "length": length};
+    return datastore.save({"key": key, "data": ship});
+}
+
+
+/******************************************************************************
+ * Name: delete_ship
+ * Description: Deletes the ship specified by the id argument.
+ *****************************************************************************/
+// Pass kind of entity kind (i.e. SHIP or SLIP)
+function delete_ship(id) {
+    const key = datastore.key([SHIP, parseInt(id, 10)]);
+    return datastore.delete(key);
+}
+
+
+/******************************************************************************
+ * Name: put_cargo
+ * Description: Assigns cargo to a ship.
+ *****************************************************************************/
+function put_cargo(req, ship_id, cargo_id) {
+    const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
+    return datastore.get(ship_key)
+    .then((ship) => {
+        console.log("Ship: " + ship[0]);
+        if(typeof(ship[0].cargo) === 'undefined') {
+            ship[0].cargo = []; // Add cargo property
+            console.log("Adding cargo []");
+        }
+        new_cargo = {}
+        new_cargo.id = cargo_id;
+        new_cargo.self =  req.protocol + "://" + ROOT_URL
+         + "cargo/" + cargo_id;
+         console.log("New cargo: " + new_cargo.id + "   " + new_cargo.self);
+        ship[0].cargo.push(new_cargo);
+
+        return datastore.save({"key": ship_key, "data": ship[0]});
+    });
+}
+
+/******************************************************************************
+ * Name: delete_cargo
+ * Description: Unloads a ship's cargo.
+ *****************************************************************************/
+function delete_cargo(ship_id) {
+
+}
+
+
+/******************************************************************************
+ * Name: get_ship_cargo
+ * Description: Returns a list of a particular ship's cargo.
+ *****************************************************************************/
+function get_ship_cargo(ship_id) {
+
+}
 
 /*******************************************************************************
  * END OF MODEL FUNCTIONS
@@ -96,8 +161,8 @@ router.get('/', function(req, res) {
     });
 });
 
-/*******************************************************************************
- * Route: GET /id
+/******************************************************************************
+ * Route: GET /ships/id
  * Description: Returns the ship entity specified by the id parameter.
  *****************************************************************************/
 router.get('/:id', function(req, res) {
@@ -109,10 +174,10 @@ router.get('/:id', function(req, res) {
     });
 });
 
-/***********************************************************************************
+/******************************************************************************
  * Route: POST /ships
  * Description: Add a new ship to the datastore.
- **********************************************************************************/
+ *****************************************************************************/
 router.post('/', function(req, res) {
     if((typeof req.body.name != "string") || (typeof req.body.type != "string") || (typeof req.body.length != "number"))
     {
@@ -125,6 +190,73 @@ router.post('/', function(req, res) {
             res.status(201).send('{ "id": ' + key.id + ' }'); // 201 => Ship created
         });
     }
+});
+
+/******************************************************************************
+ * Route: PUT /ships/:ids
+ * Description: Update a ship's properties by ship id.
+ *****************************************************************************/
+router.put('/ships/:id', function(req, res) {
+
+    if((typeof req.body.name != "string") || (typeof req.body.type != "string") || (typeof req.body.length != "number"))
+    {
+        res.status(400).send("Invalid Ship PUT Values Received"); 
+    }  
+    else 
+    {
+        put_ship(req.params.id, req.body.name, req.body.type, req.body.length)
+        .then(res.status(200).end())
+        .catch(e => {
+            console.log(e.message);
+            res.status(400).send(e.message);
+        });
+    }
+});
+
+
+/******************************************************************************
+ * Route: DELETE /ships/:id
+ * Description: Deletes a ship by id.
+ *****************************************************************************/
+router.delete('/:id', function(req,res) {
+    // First, unload any cargo
+    get_ship(req.params.id)
+    .then((ship) => {
+        // Free ship from slip if ship was docked
+        if(typeof(ship[0].cargo) != 'undefined'){
+            console.log("Amount of cargo: " + ship[0].cargo.length)
+            if(ship[0].cargo.length != 0) {
+                console.log("Unloading Ship's Cargo");
+                // Unload Cargo 
+            }
+        }
+        
+        
+        delete_ship(req.params.id)
+        .then(res.status(200).end());
+    });
+}); 
+
+
+/*******************************************************************************
+ * Name: /ships/:ship_id/cargo/:cargo_id
+ * Description: Assigns cargo to a ship.
+ ******************************************************************************/
+router.put('/:ship_id/cargo/:cargo_id', function(req, res) {
+    put_cargo(req, req.params.ship_id, req.params.cargo_id)
+    .then(res.status(200).end());
+    
+
+    // Update cargo with carrier
+});
+
+
+/*******************************************************************************
+ * Name: /ships/:ship_id/cargo
+ * Description: Returns a list of a ship's cargo.
+ ******************************************************************************/
+router.get('/:ship_id/cargo', function(req, res) {
+
 });
 
 /*******************************************************************************
