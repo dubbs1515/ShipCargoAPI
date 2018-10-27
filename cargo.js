@@ -3,6 +3,7 @@ const router = express.Router();
 const bodyParser = require('body-parser');
 const ds = require('./datastore');
 const datastore = ds.datastore;
+const SHIP = "Ship"; // Datastore Kind (akin to RDB tables)
 const CARGO = "Cargo";  // Datastore Kind (akin to RDB tables)
 
 
@@ -85,8 +86,26 @@ function post_cargo(weight, content, delivery_date) {
  * Route: put_carrier
  * Description: Add carrier information to a cargo item.
  *****************************************************************************/
-function put_carrier(cargo_id, ship_id) {
-
+function put_carrier(req, cargo_id, ship_id) {
+    const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
+    console.log("Cargo: " + cargo_id);
+    return datastore.get(cargo_key)
+    .then((cargo) => {
+        console.log("Cargo type: " + cargo[0].type)
+        // Get ship info to add 
+        const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
+            return datastore.get(ship_key)
+        .then((ship) => {
+            console.log("Ship: " + ship[0].name);
+            ship_info = {};
+            ship_info.name = ship[0].name;
+            ship_info.id = ship_id;
+            ship_info.self = req.protocol + "://" + ROOT_URL + "ships/" + ship_id;
+                
+            cargo[0].carrier = ship_info;
+            return datastore.save({"key": cargo_key, "data": cargo[0]});
+        });     
+    });
 }
 
 /******************************************************************************
@@ -118,7 +137,8 @@ router.get('/', function(req, res) {
     .then((cargo) => {
         // Add self links
         cargo.items.forEach(element => {
-            element.self = req.protocol + "://" + ROOT_URL + "cargo/" + element.id;
+            element.self = req.protocol + "://" + ROOT_URL + 
+            "cargo/" + element.id;
         });
         res.status(200).json(cargo);
     });
@@ -169,12 +189,19 @@ router.delete('/:id', function(req,res) {
 }); 
 
 
+/******************************************************************************
+ * Route: PUT cargo/:cargo_id/ship/:ship_id
+ * Description: Assign carrier.
+ *****************************************************************************/
+router.put('/:cargo_id/ships/:ship_id', function(req, res) {
+    put_carrier(req, req.params.cargo_id, req.params.ship_id)
+    .then(res.status(200).end());
+});
+
+
 /*******************************************************************************
  * END OF CONTROLLER FUNCTIONS
  ******************************************************************************/
 
  module.exports = router;
- /*module.exports = {
-     get_cargo: get_cargo,
-     put_carrier: put_carrier
- }*/
+ 

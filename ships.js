@@ -4,8 +4,9 @@ const bodyParser = require('body-parser');
 const ds = require('./datastore');
 const datastore = ds.datastore;
 const SHIP = "Ship"; // Datastore Kind (akin to RDB tables)
-let cargo_mod = require('./cargo');
-let get_cargo = cargo_mod.get_cargo;
+const CARGO = "Cargo"; // Datastore Kind
+let cargo_module = require('./cargo');
+
 
 const PAGE_LIMIT = 3;   // Set pagination Limit
 
@@ -145,8 +146,49 @@ function delete_cargo(ship_id, cargo_id) {
  * Name: get_ship_cargo
  * Description: Returns a list of a particular ship's cargo.
  *****************************************************************************/
-function get_ship_cargo(ship_id) {
+function get_ship_cargo(req, ship_id) {
+    // List of cargo assigned to the ship
+    let q = datastore.createQuery(CARGO)
+        .filter('carrier.id', '=', ship_id) // Filter by ship
+        .limit(PAGE_LIMIT); // Limit results for pagination
+    const cargo_results = {};
+    if(Object.keys(req.query).includes("cursor")) {
+        q = q.start(req.query.cursor);
+    }
 
+    return datastore.runQuery(q).then((entities) => {
+        cargo_results.items = entities[0].map(ds.fromDataStore); 
+        // Check for additional pages
+        if(entities[1].moreResults !== ds.Datastore.NO_MORE_RESULTS) {
+            cargo_results.next = req.protocol + "://" + req.get("host") + req.baseUrl
+            + "?cursor=" + entities[1].endCursor; 
+        }
+        return cargo_results;
+    });
+
+    /*
+    const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
+    return datastore.get(ship_key)
+    .then((ships) => {
+        const ship = ships[0];
+        // Get cargo keys (map a function to the array of cargo keys)
+        const cargo_keys = ship.cargo.map((nextObj) => {
+            // Returns array of keys for use by datastore
+            return datastore.key([CARGO, parseInt(nextObj.id, 10)]);
+        });
+        // Get the cargo items (entities)
+        const cargo_results =  datastore.get(cargo_keys);
+    })
+    .then((cargoes) => {
+        console.log("returning cargo list");
+        // Make keys readable form 
+        cargoes = cargoes[0].map(ds.fromDataStore);
+        // Add self links
+        cargoes.forEach(element => {
+            element.self = req.protocol + "://" + ROOT_URL + "cargo/" 
+            + element.id;
+        });
+        return cargoes;*/
 }
 
 /*******************************************************************************
@@ -241,10 +283,9 @@ router.delete('/:id', function(req,res) {
             console.log("Amount of cargo: " + ship[0].cargo.length)
             if(ship[0].cargo.length != 0) {
                 console.log("Unloading Ship's Cargo");
-                // Unload Cargo 
+                // Unload Cargo -> Update cargo carrier property
             }
         }
-        
         
         delete_ship(req.params.id)
         .then(res.status(200).end());
@@ -259,10 +300,16 @@ router.delete('/:id', function(req,res) {
 router.put('/:ship_id/cargo/:cargo_id', function(req, res) {
     put_cargo(req, req.params.ship_id, req.params.cargo_id)
     .then(res.status(200).end());
+
+});
+    /*
+    .then(
+        // Update cargo with carrier
+    cargo_module.update_cargo_carrier(req, req.params.cargo_id, req.params.ship_id)
+    .then(res.status(200).end())*/
+    
     
 
-    // Update cargo with carrier
-});
 
 /*******************************************************************************
  * Name: /ships/:ship_id/cargo/:cargo_id
@@ -273,7 +320,7 @@ router.delete('/:ship_id/cargo/:cargo_id', function(req, res) {
     .then(res.status(200).end());
     
 
-    // Update cargo with carrier
+    
 });
 
 
@@ -282,7 +329,16 @@ router.delete('/:ship_id/cargo/:cargo_id', function(req, res) {
  * Description: Returns a list of a ship's cargo.
  ******************************************************************************/
 router.get('/:ship_id/cargo', function(req, res) {
-
+    console.log("from route, ship id: " + req.params.ship_id);
+    const cargoes = get_ship_cargo(req, req.params.ship_id)
+    .then((cargoes) => {
+        // Add self links
+        cargoes.items.forEach(element => {
+            element.self = req.protocol + "://" + ROOT_URL + "cargo/" 
+            + element.id;
+        });
+        res.status(200).json(cargoes);
+    });
 });
 
 /*******************************************************************************
