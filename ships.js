@@ -122,8 +122,22 @@ function put_cargo(req, ship_id, cargo_id) {
  * Name: delete_cargo
  * Description: Unloads a ship's cargo.
  *****************************************************************************/
-function delete_cargo(ship_id) {
+function delete_cargo(ship_id, cargo_id) {
+    const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
+    return datastore.get(ship_key)
+    .then((ship) => {
+        if(typeof(ship[0].cargo) !== 'undefined') {
+            let updated_manifest = ship[0].cargo;
+            let remove_cargo = updated_manifest.map(function(cargo) {
+                return cargo.id;
+            }).indexOf(cargo_id);
+            
+            updated_manifest.splice(remove_cargo, 1);
+            ship[0].cargo = updated_manifest;
 
+            return datastore.save({"key": ship_key, "data": ship[0]});
+        }
+    });
 }
 
 
@@ -244,6 +258,18 @@ router.delete('/:id', function(req,res) {
  ******************************************************************************/
 router.put('/:ship_id/cargo/:cargo_id', function(req, res) {
     put_cargo(req, req.params.ship_id, req.params.cargo_id)
+    .then(res.status(200).end());
+    
+
+    // Update cargo with carrier
+});
+
+/*******************************************************************************
+ * Name: /ships/:ship_id/cargo/:cargo_id
+ * Description: Deletes the specified piece of cargo from a ship.
+ ******************************************************************************/
+router.delete('/:ship_id/cargo/:cargo_id', function(req, res) {
+    delete_cargo(req.params.ship_id, req.params.cargo_id)
     .then(res.status(200).end());
     
 
