@@ -124,6 +124,7 @@ function delete_carrier(cargo_id, ship_id) {
     return datastore.get(cargo_key)
     .then((cargo) => { 
         cargo[0].carrier = null;
+        console.log("Deleting carrier: " + cargo[0].carrier);
         return datastore.save({"key": cargo_key, "data": cargo[0]});
     });
 }

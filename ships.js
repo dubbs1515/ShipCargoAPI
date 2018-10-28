@@ -113,7 +113,7 @@ function delete_ship(ship_id) {
  * Description: Helper to determine if cargo is already assigned to a
  *  ship.
  *****************************************************************************/
-function cargo_to_assign(cargo_id) {
+function cargo_to_move(cargo_id) {
     // List of cargo assigned to the ship
     let key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
     const q = datastore.createQuery(CARGO).filter('__key__', '=', key); 
@@ -129,7 +129,7 @@ function cargo_to_assign(cargo_id) {
 async function put_ship_cargo(req, ship_id, cargo_id, res) {
     
     
-    let cargo_asignment = await cargo_to_assign(cargo_id);    // Check if already assigned
+    let cargo_asignment = await cargo_to_move(cargo_id);    // Check if already assigned
     cargo_asignment = cargo_asignment[0];
     let carrier_ship = await get_ship(ship_id);
     carrier_ship = carrier_ship[0];
@@ -170,25 +170,56 @@ async function put_ship_cargo(req, ship_id, cargo_id, res) {
 
 /******************************************************************************
  * Name: delete_ship_cargo
- * Description: Unloads a ship's cargo.
+ * Description: Unloads a the cargo specified from a ship.
  *****************************************************************************/
-function delete_ship_cargo(ship_id, cargo_id) {
-    const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
-    return datastore.get(ship_key)
-    .then((ship) => {
-        if (!(ship[0].cargo === undefined || ship[0].cargo == 0))
-        /*if(typeof(ship[0].cargo) !== 'undefined')*/ {
-            let updated_manifest = ship[0].cargo;
-            let remove_cargo = updated_manifest.map(function(cargo) {
-                return cargo.id;
-            }).indexOf(cargo_id);
-            
-            updated_manifest.splice(remove_cargo, 1);
-            ship[0].cargo = updated_manifest;
+async function delete_ship_cargo(ship_id, cargo_id) {
 
-            return datastore.save({"key": ship_key, "data": ship[0]});
-        }
-    });
+    let current_ship = await get_ship(ship_id);
+    current_ship = current_ship[0];
+    let removed_cargo = await cargo_to_move(cargo_id);
+    removed_cargo = removed_cargo[0];
+
+    const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
+    const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
+    
+    
+    if(!(current_ship.cargo === undefined || current_ship.cargo == 0)) {
+        // 1. Update cargo carrier to null
+        removed_cargo.carrier = null;
+        console.log("Deleting carrier: " + removed_cargo.carrier);
+        // Save updated carrier info
+        datastore.save({"key": cargo_key, "data": removed_cargo});
+
+        // 2. Remove cargo from ship's cargo array
+        let updated_manifest = current_ship.cargo;
+        // Find index of cargo to remove from array and remove
+        let remove_me = updated_manifest.map(function(cargo) {
+            return cargo.id;
+        }).indexOf(cargo_id);
+        updated_manifest.splice(removed_cargo, 1);
+        // Save updated cargo
+        current_ship.cargo = updated_manifest;
+        datastore.save({"key": ship_key, "data": current_ship});
+        
+        return 1;
+    }
+    return 0;
+    
+    //.then((ship) => {
+        //if (!(ship[0].cargo === undefined || ship[0].cargo == 0))
+        //if (!(ship[0].cargo === undefined || ship[0].cargo == 0))
+        /*if(typeof(ship[0].cargo) !== 'undefined') {*/
+           //let updated_manifest = ship[0].cargo;
+            /*let remove_cargo = updated_manifest.map(function(cargo) {
+                return cargo.id;
+            }).indexOf(cargo_id);*/
+            
+            //updated_manifest.splice(remove_cargo, 1);
+            //ship[0].cargo = updated_manifest;
+
+            //return datastore.save({"key": ship_key, "data": ship[0]});
+        ///}
+    //});
 }
 
 
