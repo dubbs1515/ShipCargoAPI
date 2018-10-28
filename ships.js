@@ -5,7 +5,6 @@ const ds = require('./datastore');
 const datastore = ds.datastore;
 const SHIP = "Ship"; // Datastore Kind (akin to RDB tables)
 const CARGO = "Cargo"; // Datastore Kind
-let cargo_module = require('./cargo');
 
 
 const PAGE_LIMIT = 3;   // Set pagination Limit
@@ -88,10 +87,26 @@ function put_ship(id, name, type, length) {
  * Name: delete_ship
  * Description: Deletes the ship specified by the id argument.
  *****************************************************************************/
-// Pass kind of entity kind (i.e. SHIP or SLIP)
-function delete_ship(id) {
-    const key = datastore.key([SHIP, parseInt(id, 10)]);
-    return datastore.delete(key);
+function delete_ship(ship_id) {
+    const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
+    return datastore.get(ship_key)
+    .then((ship) => {
+        // Unload ship if necessary
+        if(typeof(ship[0].cargo) !== 'undefined' || ship[0].cargo === []) {
+            ship[0].cargo.forEach(element => {
+                cargo_id = element.id;
+                const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
+                console.log("Cargo: " + cargo_id);
+                return datastore.get(cargo_key)
+                .then((cargo) => {
+                    cargo[0].carrier = {};
+                    return datastore.save({"key": cargo_key, "data": cargo[0]});
+                });
+                
+            });
+        }
+        return datastore.delete(ship_key);
+    });
 }
 
 
@@ -99,31 +114,69 @@ function delete_ship(id) {
  * Name: put_cargo
  * Description: Assigns cargo to a ship.
  *****************************************************************************/
-function put_cargo(req, ship_id, cargo_id) {
-    const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
-    return datastore.get(ship_key)
-    .then((ship) => {
-        console.log("Ship: " + ship[0]);
-        if(typeof(ship[0].cargo) === 'undefined') {
-            ship[0].cargo = []; // Add cargo property
-            console.log("Adding cargo []");
+function put_cargo(req, ship_id, cargo_id, res) {
+    
+    // Assign carrier to cargo
+    const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
+    console.log("Cargo: " + cargo_id);
+    return datastore.get(cargo_key)
+    .then((cargo) => {
+        try 
+        {
+            if(cargo[0].carrier !== {} || cargo[0].carrier !== null) {
+                console.log("Quiting 403...");
+                throw "Carrier already assigned!";
+            }
+        } 
+        catch (error) {
+            return
         }
-        new_cargo = {}
-        new_cargo.id = cargo_id;
-        new_cargo.self =  req.protocol + "://" + ROOT_URL
-         + "cargo/" + cargo_id;
-         console.log("New cargo: " + new_cargo.id + "   " + new_cargo.self);
-        ship[0].cargo.push(new_cargo);
 
-        return datastore.save({"key": ship_key, "data": ship[0]});
-    });
+        
+        console.log("Cargo type: " + cargo[0].type)
+        // Get ship info to add 
+        const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
+        return datastore.get(ship_key)
+        .then((ship) => {
+            // Assign carrier
+            console.log("Ship: " + ship[0].name);
+            ship_info = {};
+            ship_info.name = ship[0].name;
+            ship_info.id = ship_id;
+            ship_info.self = req.protocol + "://" + ROOT_URL + "ships/" + ship_id;
+                
+            cargo[0].carrier = ship_info;
+            return datastore.save({"key": cargo_key, "data": cargo[0]})
+                // Assign cargo to ship
+                .then((ship) => {
+                console.log("Ship: " + ship[0]);
+                if(typeof(ship[0].cargo) === 'undefined') {
+                    ship[0].cargo = []; // Add cargo property
+                    console.log("Adding cargo []");
+                }
+                new_cargo = {}
+                new_cargo.id = cargo_id;
+                new_cargo.self =  req.protocol + "://" + ROOT_URL
+                    + "cargo/" + cargo_id;
+                    console.log("New cargo: " + new_cargo.id + "   " + new_cargo.self);
+                ship[0].cargo.push(new_cargo);
+        
+                return datastore.save({"key": ship_key, "data": ship[0]});
+            })
+            .catch();
+        })
+        .catch();     
+    })
+    .catch(res.status(403).end());/*
+    const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
+    return datastore.get(ship_key)*/
 }
 
 /******************************************************************************
- * Name: delete_cargo
+ * Name: delete_ship_cargo
  * Description: Unloads a ship's cargo.
  *****************************************************************************/
-function delete_cargo(ship_id, cargo_id) {
+function delete_ship_cargo(ship_id, cargo_id) {
     const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
     return datastore.get(ship_key)
     .then((ship) => {
@@ -160,35 +213,11 @@ function get_ship_cargo(req, ship_id) {
         cargo_results.items = entities[0].map(ds.fromDataStore); 
         // Check for additional pages
         if(entities[1].moreResults !== ds.Datastore.NO_MORE_RESULTS) {
-            cargo_results.next = req.protocol + "://" + req.get("host") + req.baseUrl
-            + "?cursor=" + entities[1].endCursor; 
+            cargo_results.next = req.protocol + "://" + req.get("host") + 'ships/'
+            + ship_id + '/cargo'+ "?cursor=" + entities[1].endCursor; 
         }
         return cargo_results;
     });
-
-    /*
-    const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
-    return datastore.get(ship_key)
-    .then((ships) => {
-        const ship = ships[0];
-        // Get cargo keys (map a function to the array of cargo keys)
-        const cargo_keys = ship.cargo.map((nextObj) => {
-            // Returns array of keys for use by datastore
-            return datastore.key([CARGO, parseInt(nextObj.id, 10)]);
-        });
-        // Get the cargo items (entities)
-        const cargo_results =  datastore.get(cargo_keys);
-    })
-    .then((cargoes) => {
-        console.log("returning cargo list");
-        // Make keys readable form 
-        cargoes = cargoes[0].map(ds.fromDataStore);
-        // Add self links
-        cargoes.forEach(element => {
-            element.self = req.protocol + "://" + ROOT_URL + "cargo/" 
-            + element.id;
-        });
-        return cargoes;*/
 }
 
 /*******************************************************************************
@@ -274,22 +303,9 @@ router.put('/ships/:id', function(req, res) {
  * Route: DELETE /ships/:id
  * Description: Deletes a ship by id.
  *****************************************************************************/
-router.delete('/:id', function(req,res) {
-    // First, unload any cargo
-    get_ship(req.params.id)
-    .then((ship) => {
-        // Free ship from slip if ship was docked
-        if(typeof(ship[0].cargo) != 'undefined'){
-            console.log("Amount of cargo: " + ship[0].cargo.length)
-            if(ship[0].cargo.length != 0) {
-                console.log("Unloading Ship's Cargo");
-                // Unload Cargo -> Update cargo carrier property
-            }
-        }
-        
+router.delete('/:id', function(req,res) {    
         delete_ship(req.params.id)
         .then(res.status(200).end());
-    });
 }); 
 
 
@@ -297,16 +313,20 @@ router.delete('/:id', function(req,res) {
  * Name: /ships/:ship_id/cargo/:cargo_id
  * Description: Assigns cargo to a ship.
  ******************************************************************************/
-router.put('/:ship_id/cargo/:cargo_id', function(req, res) {
-    put_cargo(req, req.params.ship_id, req.params.cargo_id)
-    .then(res.status(200).end());
-
+router.put('/:ship_id/cargo/:cargo_id', function(req, res) { 
+    
+    put_cargo(req, req.params.ship_id, req.params.cargo_id, res)
+        .then(res.status(200).end())
+        .catch(res.status(400).end()); 
+   /* try {
+        put_cargo(req, req.params.ship_id, req.params.cargo_id, res)
+        .then(res.status(200).end());
+        
+    } catch(e) {
+        res.status(403).end();
+    }*/
+    
 });
-    /*
-    .then(
-        // Update cargo with carrier
-    cargo_module.update_cargo_carrier(req, req.params.cargo_id, req.params.ship_id)
-    .then(res.status(200).end())*/
     
     
 
@@ -316,10 +336,8 @@ router.put('/:ship_id/cargo/:cargo_id', function(req, res) {
  * Description: Deletes the specified piece of cargo from a ship.
  ******************************************************************************/
 router.delete('/:ship_id/cargo/:cargo_id', function(req, res) {
-    delete_cargo(req.params.ship_id, req.params.cargo_id)
-    .then(res.status(200).end());
-    
-
+    delete_ship_cargo(req.params.ship_id, req.params.cargo_id)
+    .then(res.status(200).end())
     
 });
 

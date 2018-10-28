@@ -113,7 +113,13 @@ function put_carrier(req, cargo_id, ship_id) {
  * Description: Remove carrier information from a cargo item.
  *****************************************************************************/
 function delete_carrier(cargo_id, ship_id) {
-
+    const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
+    console.log("Cargo: " + cargo_id);
+    return datastore.get(cargo_key)
+    .then((cargo) => { 
+        cargo[0].carrier = {};
+        return datastore.save({"key": cargo_key, "data": cargo[0]});
+    });
 }
 
 /*******************************************************************************
@@ -199,9 +205,19 @@ router.put('/:cargo_id/ships/:ship_id', function(req, res) {
 });
 
 
+
+/******************************************************************************
+ * Route: PUT cargo/:cargo_id/ship/:ship_id
+ * Description: Unassign carrier.
+ *****************************************************************************/
+router.delete('/:cargo_id/ships/:ship_id', function(req, res) {
+    delete_carrier(req, req.params.cargo_id, req.params.ship_id)
+    .then(res.status(200).end());
+});
+
+
 /*******************************************************************************
  * END OF CONTROLLER FUNCTIONS
  ******************************************************************************/
 
  module.exports = router;
- 
