@@ -108,57 +108,64 @@ function delete_ship(ship_id) {
     });
 }
 
+/******************************************************************************
+ * Name: cargo_is_assigned
+ * Description: Helper to determine if cargo is already assigned to a
+ *  ship.
+ *****************************************************************************/
+function cargo_to_assign(cargo_id) {
+    // List of cargo assigned to the ship
+    let key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
+    const q = datastore.createQuery(CARGO).filter('__key__', '=', key); 
+    return datastore.runQuery(q).then((entity) => {                 
+        return entity[0].map(ds.fromDataStore);
+    });
+}
 
 /******************************************************************************
  * Name: put_cargo
  * Description: Assigns cargo to a ship.
  *****************************************************************************/
-function put_cargo(req, ship_id, cargo_id, res) {
-    // 1. Assign carrier to cargo
-    const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
-    return datastore.get(cargo_key)
-    .then((cargoes) => {
-        let cargo = cargoes[0];
-        // Ensure that the cargo is not already assigned to another carrier
-        try 
-        {
-            if(cargo.carrier !== {} && cargo.carrier !== null) {
-                console.log("Quiting 403...");
-                throw "Carrier already assigned!";
-            }
-        } 
-        catch (error) {
-            return
-        }
-        const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
-        return datastore.get(ship_key)
-        .then((ships) => {
-            let ship = ships[0];
-            // 1. Assign carrier to cargo
-            ship_info = {};
-            ship_info.name = ship.name;
-            ship_info.id = ship_id;
-            ship_info.self = req.protocol + "://" + ROOT_URL + "ships/" + ship_id;
-            cargo.carrier = ship_info;
-            return datastore.save({"key": cargo_key, "data": cargo})
-            // 2. Assign cargo to ship
-            .then(() => {
-                if(typeof(ship.cargo) === 'undefined') {
-                    ship.cargo = []; // Add cargo property
-                }
-                new_cargo = {}
-                new_cargo.id = cargo_id;
-                new_cargo.self =  req.protocol + "://" + ROOT_URL
-                    + "cargo/" + cargo_id;
-                ship.cargo.push(new_cargo);
+async function put_ship_cargo(req, ship_id, cargo_id, res) {
+    
+    
+    let cargo_asignment = await cargo_to_assign(cargo_id);    // Check if already assigned
+    cargo_asignment = cargo_asignment[0];
+    let carrier_ship = await get_ship(ship_id);
+    carrier_ship = carrier_ship[0];
+    console.log("Ship to assign cargo to: " + carrier_ship.name);
+    console.log("Is cargo current carrier null: " + cargo_asignment.carrier);
+    // cargo_asignment.carrier === null
+    if(cargo_asignment.carrier === null) {
+        console.log("NOT ASSIGNED");
+        // 2. Assign carrier to cargo 
+        const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
+        ship_info = {};
+        ship_info.name = carrier_ship.name;
+        ship_info.id = ship_id;
+        ship_info.self = req.protocol + "://" + ROOT_URL + "ships/" + ship_id;
+        cargo_asignment.carrier = ship_info;
+        datastore.save({"key": cargo_key, "data": cargo_asignment})
         
-                return datastore.save({"key": ship_key, "data": ship});
-            })
-            .catch();
-        })
-        .catch();     
-    })
-    .catch(res.status(403).end());
+        // 2. Assign cargo to ship
+        console.log("1. assigning ship...");
+        const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
+        if(typeof(carrier_ship.cargo) === 'undefined') {
+            carrier_ship.cargo = []; // Add cargo property
+        }
+        console.log("1. Building ship's cargo info...");
+        new_cargo = {}
+        new_cargo.id = cargo_id;
+        new_cargo.self =  req.protocol + "://" + ROOT_URL
+            + "cargo/" + cargo_id;
+        carrier_ship.cargo.push(new_cargo);
+        datastore.save({"key": ship_key, "data": carrier_ship});
+
+        return true;
+    }
+
+    return false; 
+    
 }
 
 /******************************************************************************
@@ -169,7 +176,8 @@ function delete_ship_cargo(ship_id, cargo_id) {
     const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
     return datastore.get(ship_key)
     .then((ship) => {
-        if(typeof(ship[0].cargo) !== 'undefined') {
+        if (!(ship[0].cargo === undefined || ship[0].cargo == 0))
+        /*if(typeof(ship[0].cargo) !== 'undefined')*/ {
             let updated_manifest = ship[0].cargo;
             let remove_cargo = updated_manifest.map(function(cargo) {
                 return cargo.id;
@@ -270,7 +278,7 @@ router.post('/', function(req, res) {
  * Route: PUT /ships/:ids
  * Description: Update a ship's properties by ship id.
  *****************************************************************************/
-router.put('/ships/:id', function(req, res) {
+router.put('/:id', function(req, res) {
 
     if((typeof req.body.name != "string") || (typeof req.body.type != "string")
      || (typeof req.body.length != "number"))
@@ -299,11 +307,14 @@ router.delete('/:id', function(req,res) {
  * Name: /ships/:ship_id/cargo/:cargo_id
  * Description: Assigns cargo to a ship.
  ******************************************************************************/
-router.put('/:ship_id/cargo/:cargo_id', function(req, res) { 
-    
-    put_cargo(req, req.params.ship_id, req.params.cargo_id, res)
-        .then(res.status(200).end())
-        .catch(res.status(400).end()); 
+router.put('/:ship_id/cargo/:cargo_id', async function(req, res) { 
+    let assignmentSuccess = await put_ship_cargo(req, req.params.ship_id, req.params.cargo_id, res)
+    console.log(assignmentSuccess);
+    if(assignmentSuccess) {
+        res.status(200).end();
+    } else {
+        res.status(403).send("The cargo is currently assigned to another ship");
+    }
 });
     
     

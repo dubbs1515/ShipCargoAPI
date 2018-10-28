@@ -82,6 +82,16 @@ function post_cargo(weight, content, delivery_date) {
 }
 
 
+/***********************************************************************************
+ * Name: put_ship
+ * Description: Add a ship to the datastore (cannot modify cargo directly here).
+ **********************************************************************************/
+function put_cargo(id, weight, content, delivery_date) {
+    const key = datastore.key([CARGO, parseInt(id,10)]);
+    const ship = {"weight": weight, "content": content, "delivery_date": delivery_date};
+    return datastore.save({"key": key, "data": ship});
+}
+
 /******************************************************************************
  * Route: put_carrier
  * Description: Add carrier information to a cargo item.
@@ -113,7 +123,7 @@ function delete_carrier(cargo_id, ship_id) {
     const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
     return datastore.get(cargo_key)
     .then((cargo) => { 
-        cargo[0].carrier = {};
+        cargo[0].carrier = null;
         return datastore.save({"key": cargo_key, "data": cargo[0]});
     });
 }
@@ -185,7 +195,7 @@ router.post('/', function(req, res) {
  * Route: PUT /cargo/:id
  * Description: Update a ship's properties by ship id.
  **********************************************************************************/
-router.put('/cargo/:id', function(req, res) {
+router.put('/:id', function(req, res) {
 
     if((typeof req.body.weight != "number") || (typeof req.body.content != "string") 
     || (typeof req.body.delivery_date != "string"))
