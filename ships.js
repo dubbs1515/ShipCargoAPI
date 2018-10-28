@@ -96,7 +96,6 @@ function delete_ship(ship_id) {
             ship[0].cargo.forEach(element => {
                 cargo_id = element.id;
                 const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
-                console.log("Cargo: " + cargo_id);
                 return datastore.get(cargo_key)
                 .then((cargo) => {
                     cargo[0].carrier = {};
@@ -115,15 +114,15 @@ function delete_ship(ship_id) {
  * Description: Assigns cargo to a ship.
  *****************************************************************************/
 function put_cargo(req, ship_id, cargo_id, res) {
-    
-    // Assign carrier to cargo
+    // 1. Assign carrier to cargo
     const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
-    console.log("Cargo: " + cargo_id);
     return datastore.get(cargo_key)
-    .then((cargo) => {
+    .then((cargoes) => {
+        let cargo = cargoes[0];
+        // Ensure that the cargo is not already assigned to another carrier
         try 
         {
-            if(cargo[0].carrier !== {} || cargo[0].carrier !== null) {
+            if(cargo.carrier !== {} && cargo.carrier !== null) {
                 console.log("Quiting 403...");
                 throw "Carrier already assigned!";
             }
@@ -131,45 +130,35 @@ function put_cargo(req, ship_id, cargo_id, res) {
         catch (error) {
             return
         }
-
-        
-        console.log("Cargo type: " + cargo[0].type)
-        // Get ship info to add 
         const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
         return datastore.get(ship_key)
-        .then((ship) => {
-            // Assign carrier
-            console.log("Ship: " + ship[0].name);
+        .then((ships) => {
+            let ship = ships[0];
+            // 1. Assign carrier to cargo
             ship_info = {};
-            ship_info.name = ship[0].name;
+            ship_info.name = ship.name;
             ship_info.id = ship_id;
             ship_info.self = req.protocol + "://" + ROOT_URL + "ships/" + ship_id;
-                
-            cargo[0].carrier = ship_info;
-            return datastore.save({"key": cargo_key, "data": cargo[0]})
-                // Assign cargo to ship
-                .then((ship) => {
-                console.log("Ship: " + ship[0]);
-                if(typeof(ship[0].cargo) === 'undefined') {
-                    ship[0].cargo = []; // Add cargo property
-                    console.log("Adding cargo []");
+            cargo.carrier = ship_info;
+            return datastore.save({"key": cargo_key, "data": cargo})
+            // 2. Assign cargo to ship
+            .then(() => {
+                if(typeof(ship.cargo) === 'undefined') {
+                    ship.cargo = []; // Add cargo property
                 }
                 new_cargo = {}
                 new_cargo.id = cargo_id;
                 new_cargo.self =  req.protocol + "://" + ROOT_URL
                     + "cargo/" + cargo_id;
-                    console.log("New cargo: " + new_cargo.id + "   " + new_cargo.self);
-                ship[0].cargo.push(new_cargo);
+                ship.cargo.push(new_cargo);
         
-                return datastore.save({"key": ship_key, "data": ship[0]});
+                return datastore.save({"key": ship_key, "data": ship});
             })
             .catch();
         })
         .catch();     
     })
-    .catch(res.status(403).end());/*
-    const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
-    return datastore.get(ship_key)*/
+    .catch(res.status(403).end());
 }
 
 /******************************************************************************
@@ -283,18 +272,15 @@ router.post('/', function(req, res) {
  *****************************************************************************/
 router.put('/ships/:id', function(req, res) {
 
-    if((typeof req.body.name != "string") || (typeof req.body.type != "string") || (typeof req.body.length != "number"))
+    if((typeof req.body.name != "string") || (typeof req.body.type != "string")
+     || (typeof req.body.length != "number"))
     {
         res.status(400).send("Invalid Ship PUT Values Received"); 
     }  
     else 
     {
         put_ship(req.params.id, req.body.name, req.body.type, req.body.length)
-        .then(res.status(200).end())
-        .catch(e => {
-            console.log(e.message);
-            res.status(400).send(e.message);
-        });
+        .then(res.status(200).end());
     }
 });
 
@@ -318,14 +304,6 @@ router.put('/:ship_id/cargo/:cargo_id', function(req, res) {
     put_cargo(req, req.params.ship_id, req.params.cargo_id, res)
         .then(res.status(200).end())
         .catch(res.status(400).end()); 
-   /* try {
-        put_cargo(req, req.params.ship_id, req.params.cargo_id, res)
-        .then(res.status(200).end());
-        
-    } catch(e) {
-        res.status(403).end();
-    }*/
-    
 });
     
     
@@ -347,7 +325,6 @@ router.delete('/:ship_id/cargo/:cargo_id', function(req, res) {
  * Description: Returns a list of a ship's cargo.
  ******************************************************************************/
 router.get('/:ship_id/cargo', function(req, res) {
-    console.log("from route, ship id: " + req.params.ship_id);
     const cargoes = get_ship_cargo(req, req.params.ship_id)
     .then((cargoes) => {
         // Add self links

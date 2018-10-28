@@ -88,15 +88,12 @@ function post_cargo(weight, content, delivery_date) {
  *****************************************************************************/
 function put_carrier(req, cargo_id, ship_id) {
     const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
-    console.log("Cargo: " + cargo_id);
     return datastore.get(cargo_key)
     .then((cargo) => {
-        console.log("Cargo type: " + cargo[0].type)
         // Get ship info to add 
         const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
             return datastore.get(ship_key)
         .then((ship) => {
-            console.log("Ship: " + ship[0].name);
             ship_info = {};
             ship_info.name = ship[0].name;
             ship_info.id = ship_id;
@@ -114,7 +111,6 @@ function put_carrier(req, cargo_id, ship_id) {
  *****************************************************************************/
 function delete_carrier(cargo_id, ship_id) {
     const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
-    console.log("Cargo: " + cargo_id);
     return datastore.get(cargo_key)
     .then((cargo) => { 
         cargo[0].carrier = {};
@@ -181,6 +177,26 @@ router.post('/', function(req, res) {
         .then( key => {
             res.status(201).send('{ "id": ' + key.id + ' }'); // 201 => Ship created
         });
+    }
+});
+
+
+/***********************************************************************************
+ * Route: PUT /cargo/:id
+ * Description: Update a ship's properties by ship id.
+ **********************************************************************************/
+router.put('/cargo/:id', function(req, res) {
+
+    if((typeof req.body.weight != "number") || (typeof req.body.content != "string") 
+    || (typeof req.body.delivery_date != "string"))
+    {
+        res.status(400).send("Invalid Cargo PUT Values Received"); 
+    }  
+    else 
+    {
+        put_cargo(req.params.id, req.body.weight, req.body.content, 
+            req.body.delivery_date)
+        .then(res.status(200).end());
     }
 });
 
