@@ -1,3 +1,4 @@
+
 const express = require ('express');
 const router = express.Router();
 const bodyParser = require('body-parser');
@@ -18,14 +19,15 @@ router.use(bodyParser.json());
 
 
 /*******************************************************************************
- * MODEL FUNCTIONS  (Used to interact with datastore)
- ******************************************************************************/
+* MODEL FUNCTIONS  (Used to interact with datastore)
+******************************************************************************/
 
- /******************************************************************************
- * Name: get_cargoes
- * Description: Returns the cargoes held in the datastore
- ******************************************************************************/
-function get_cargoes(req) {
+ 
+  /******************************************************************************
+  * Name: get_cargoes
+  * Description: Returns the cargoes held in the datastore
+  ******************************************************************************/
+ function get_cargoes(req) {
     var q = datastore.createQuery(CARGO).limit(PAGE_LIMIT);
     const cargo_results = {};   // Object to hold query results
     if(Object.keys(req.query).includes("cursor")) {
@@ -44,11 +46,11 @@ function get_cargoes(req) {
 }
 
 
+
 /***********************************************************************************
  * Name: delete_cargo
  * Description: Deletes the cargo specified by the id argument.
  **********************************************************************************/
-// Pass kind of entity kind (i.e. SHIP or SLIP)
 function delete_cargo(id) {
     const key = datastore.key([CARGO, parseInt(id, 10)]);
     return datastore.delete(key);
@@ -129,6 +131,21 @@ function delete_carrier(cargo_id, ship_id) {
     });
 }
 
+/******************************************************************************
+ * Name: delete_cargoes
+ * Description: Deletes all cargoes.
+ *****************************************************************************/
+async function delete_cargoes(req) {
+
+    let cargoes = await get_cargoes(req);
+    console.log(cargoes);
+    cargoes.items.forEach( async cargo =>  {
+        console.log("deleting id: " + cargo.id);
+        const cargo_key = datastore.key([CARGO , parseInt(cargo.id, 10)]);
+        return await datastore.delete(cargo_key);
+    });
+}
+
 /*******************************************************************************
  * END OF MODEL FUNCTIONS
  ******************************************************************************/
@@ -173,7 +190,7 @@ router.get('/:id', function(req, res) {
 });
 
 /******************************************************************************
- * Route: POST /
+ * Route: POST /cargo
  * Description: Add a new ship to the datastore.
  *****************************************************************************/
 router.post('/', function(req, res) {
@@ -213,7 +230,7 @@ router.put('/:id', function(req, res) {
 
 
 /******************************************************************************
- * Route: DELETE /:id
+ * Route: DELETE /cargo/:id
  * Description: Deletes a cargo by id.
  *****************************************************************************/
 router.delete('/:id', function(req,res) {
@@ -241,6 +258,17 @@ router.delete('/:cargo_id/ships/:ship_id', function(req, res) {
     delete_carrier(req, req.params.cargo_id, req.params.ship_id)
     .then(res.status(200).end());
 });
+
+
+/*******************************************************************************
+ * Name: DELETE /cargoes
+ * Description: Deletes all cargoes.
+ ******************************************************************************/
+router.delete('/', function(req, res) {
+    delete_cargoes(req)
+    .then(res.status(200).end());
+});
+
 
 
 /*******************************************************************************

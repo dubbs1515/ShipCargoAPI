@@ -31,8 +31,8 @@
                     <ul>
                         <li>Behavior: Returns a list of ships currently stored in the datastore.</li>
                         <li>Success Response: 200 OK</li>
-                        <li>Success Returns: Array of JSON objects: <br/>
-                        - e.g. [{}]
+                        <li>Success Returns: Array of JSON objects <br/>
+                            - Includes a next link for pagination, if more than 3 ships exist.
                         <br/>
                         </li>
                     </ul>
@@ -42,8 +42,8 @@
                     <ul>
                         <li>Behavior: Returns the ship specified by the id passed in the URL.</li>
                         <li>Success Response: 200 OK</li>
-                        <li>Success Returns: A JSON object: <br/>
-                            - e.g. {}
+                        <li>Success Returns: A JSON object <br/>
+                           <!-- - e.g. {}-->
                         </li>
                     </ul>
                     <br/>
@@ -77,15 +77,15 @@
                                 }
                             </li>
                         </ul>
-                        <li>Behavior: Updates the ship's properities per the body parameters (i.e. those of the slip specified by the id passed in the URL).</li>
+                        <li>Behavior: Updates the ship's properities per the body parameters (i.e. those of the ship specified by the id passed in the URL).</li>
                         <li>Success Response: 200 OK</li>
                     </ul>
                     <br/>
 
                     <li>DELETE /ships/{ship_id}</li>
                     <ul>
-                        <li>Behavior: Deletes the ship spefied by the id passed in the URL.<br/>
-                            - If the ship was docked in a slip, then the slip is freed.
+                        <li>Behavior: Deletes the ship specified by the id passed in the URL.<br/>
+                            - If the ship had cargo, the cargo is unloaded from the ship.
                         </li>
                         <li>Success Response: 200 OK</li>
                     </ul>
@@ -100,22 +100,61 @@
             </div>
             <div class="card-body">
                 <ul>
+
                     <li>GET /cargo</li>
                     <ul>
-                        <li>Behavior: Returns a list of cargo currently stored in the datastore.</li>
+                        <li>Behavior: Returns a list of cargo currently stored in the datastore.<br/>
+                            - Includes a next link for pagination, if more than 3 cargo exist.
+
+                        </li>
+                        
                         <li>Success Response: 200 OK</li>
-                        <li>Success Returns: Array of JSON objects: <br/>
-                            - e.g. [{}]
+                        <li>Success Returns: Array of JSON objects <br/>
+                            <!-- - e.g. [{}] -->
                             <br/>
                         </li>
                     </ul>
+
                     <li>GET /cargo/{cargo_id}</li>
                     <ul>
                         <li>Behavior: Returns the cargo specified by the id passed in the URL.</li>
                         <li>Success Response: 200 OK</li>
-                        <li>Success Returns: A JSON object: <br/>
-                            - e.g. {}
+                        <li>Success Returns: A JSON object <br/>
+                        <!-- - e.g. {} -->
                         </li>
+                    </ul>
+                    <br/>
+
+                    <li>POST /cargo</li>
+                    <ul>
+                        <li>Behavior: Returns the cargo specified by the id passed in the URL.</li>
+                        <li>Success Response: 200 OK</li>
+                        <li>Success Returns: A JSON object <br/>
+                    </ul>
+                    <br/>
+
+                    <li>PUT /cargo/{cargo_id}</li>
+                    <ul>
+                        <li>Data to Provide in Body:</li>
+                        <ul>
+                            <li>{
+                                    "weight": "[cargo weight -> Number]",
+                                    "type": "[cargo content -> String]",
+                                    "length": "[delivery date -> String]"
+                                }
+                            </li>
+                        </ul>
+                        <li>Behavior: Updates the cargo's properities per the body parameters (i.e. those of the cargo specified by the id passed in the URL).</li>
+                        <li>Success Response: 200 OK</li>
+                    </ul>
+                    <br/>
+
+                    <li>DELETE /cargo/{cargo_id}</li>
+                    <ul>
+                        <li>Behavior: Deletes the cargo specified by the id passed in the URL.<br/>
+                            
+                        </li>
+                        <li>Success Response: 200 OK</li>
                     </ul>
                 </ul>
             </div>
@@ -127,7 +166,34 @@
                 <h1>Additonal Routes</h1>
             </div>
             <div class="card-body">
-                
+                <ul>
+                    <li>PUT /ships/{ship_id}/cargo/{cargo_id}</li>
+                    <ul>
+                            <li>Behavior: Assigns the cargo specified by the cargo id to the ship specified by the ship id.
+                             <br/>
+                                - If the cargo is already assigned to another ship, then a 403 forbidden response if given.
+                            </li>
+                            <li>Success Response: 200 OK</li>
+                    </ul>
+                    <br/>
+
+                    <li>DELETE /ships/{ship_id}/cargo/{cargo_id}</li>
+                    <ul>
+                        <li>Behavior: Removes the cargo specified by the cargo id from the ship specified by the ship id.
+                        </li>
+                        <li>Success Response: 200 OK</li>
+                    </ul>
+                    <br/>
+
+                    <li>GET /ships/{ship_id}/cargo</li>
+                    <ul>
+                        <li>Behavior: Returns a list of the cargo items currently assigned to the ship specified by the ship id.
+                        <br/>
+                        - Includes a next link for pagination, if more than 3 cargo are assigned.
+                        </li>
+                        <li>Success Response: 200 OK</li>
+                    </ul>
+                </ul>
             </div>
         </div>
 
