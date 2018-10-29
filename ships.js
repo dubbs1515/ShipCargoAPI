@@ -93,7 +93,7 @@ async function delete_ship(ship_id) {
     const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
     
     console.log("Position 1...");
-    if(typeof(ship_removed) != 'undefined')
+    if((typeof(ship_removed.cargo)) != 'undefined')
     {
         if(typeof(ship_removed.cargo) != 'undefined') 
         {
