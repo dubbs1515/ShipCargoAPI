@@ -87,25 +87,55 @@ function put_ship(id, name, type, length) {
  * Name: delete_ship
  * Description: Deletes the ship specified by the id argument.
  *****************************************************************************/
-function delete_ship(ship_id) {
+async function delete_ship(ship_id) {
+    let ship_removed = await get_ship(ship_id);
+    ship_removed = ship_removed[0];
+    const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
+    
+    console.log("Position 1...");
+    if(typeof(ship_removed) != 'undefined')
+    {
+        if(typeof(ship_removed.cargo) != 'undefined') 
+        {
+            console.log("Position 2...");
+            ship_removed.cargo.forEach(async cargoItem => {
+                console.log("Position 3...");
+                cargo_id = cargoItem.id;
+                const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
+                let removed_cargo = await cargo_to_move(cargo_id);
+                removed_cargo = removed_cargo[0];
+                console.log(removed_cargo.name);
+                removed_cargo.carrier = null;
+                return datastore.save({"key": cargo_key, "data": removed_cargo});
+            });
+        }
+    }
+    
+    return datastore.delete(ship_key);
+
+
+
+    /*
     const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
     return datastore.get(ship_key)
     .then((ship) => {
         // Unload ship if necessary
         if(typeof(ship[0].cargo) !== 'undefined' || ship[0].cargo === []) {
             ship[0].cargo.forEach(element => {
+                
+
                 cargo_id = element.id;
                 const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
                 return datastore.get(cargo_key)
                 .then((cargo) => {
-                    cargo[0].carrier = {};
+                    cargo[0].carrier = null;
                     return datastore.save({"key": cargo_key, "data": cargo[0]});
                 });
                 
             });
         }
         return datastore.delete(ship_key);
-    });
+    });*/
 }
 
 /******************************************************************************
@@ -133,11 +163,10 @@ async function put_ship_cargo(req, ship_id, cargo_id, res) {
     cargo_asignment = cargo_asignment[0];
     let carrier_ship = await get_ship(ship_id);
     carrier_ship = carrier_ship[0];
-    console.log("Ship to assign cargo to: " + carrier_ship.name);
-    console.log("Is cargo current carrier null: " + cargo_asignment.carrier);
+    
     // cargo_asignment.carrier === null
     if(cargo_asignment.carrier === null) {
-        console.log("NOT ASSIGNED");
+    
         // 2. Assign carrier to cargo 
         const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
         ship_info = {};
@@ -148,12 +177,11 @@ async function put_ship_cargo(req, ship_id, cargo_id, res) {
         datastore.save({"key": cargo_key, "data": cargo_asignment})
         
         // 2. Assign cargo to ship
-        console.log("1. assigning ship...");
         const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
         if(typeof(carrier_ship.cargo) === 'undefined') {
             carrier_ship.cargo = []; // Add cargo property
         }
-        console.log("1. Building ship's cargo info...");
+        
         new_cargo = {}
         new_cargo.id = cargo_id;
         new_cargo.self =  req.protocol + "://" + ROOT_URL
@@ -181,15 +209,17 @@ async function delete_ship_cargo(ship_id, cargo_id) {
 
     const ship_key = datastore.key([SHIP, parseInt(ship_id, 10)]);
     const cargo_key = datastore.key([CARGO, parseInt(cargo_id, 10)]);
+    console.log("current ship name: " + current_ship.name);
+    console.log("current ship cargo: " + current_ship.cargo);
+    console.log("removed cargo content: " + removed_cargo.content);
     
-    
-    if(!(current_ship.cargo === undefined || current_ship.cargo == 0)) {
+    if((typeof(current_ship.cargo) != 'undefined')) {
         // 1. Update cargo carrier to null
         removed_cargo.carrier = null;
         console.log("Deleting carrier: " + removed_cargo.carrier);
         // Save updated carrier info
-        datastore.save({"key": cargo_key, "data": removed_cargo});
-
+        await datastore.save({"key": cargo_key, "data": removed_cargo});
+        console.log("after update cargo carrier");
         // 2. Remove cargo from ship's cargo array
         let updated_manifest = current_ship.cargo;
         // Find index of cargo to remove from array and remove
@@ -199,27 +229,12 @@ async function delete_ship_cargo(ship_id, cargo_id) {
         updated_manifest.splice(removed_cargo, 1);
         // Save updated cargo
         current_ship.cargo = updated_manifest;
-        datastore.save({"key": ship_key, "data": current_ship});
+        await datastore.save({"key": ship_key, "data": current_ship});
         
         return 1;
     }
     return 0;
-    
-    //.then((ship) => {
-        //if (!(ship[0].cargo === undefined || ship[0].cargo == 0))
-        //if (!(ship[0].cargo === undefined || ship[0].cargo == 0))
-        /*if(typeof(ship[0].cargo) !== 'undefined') {*/
-           //let updated_manifest = ship[0].cargo;
-            /*let remove_cargo = updated_manifest.map(function(cargo) {
-                return cargo.id;
-            }).indexOf(cargo_id);*/
-            
-            //updated_manifest.splice(remove_cargo, 1);
-            //ship[0].cargo = updated_manifest;
 
-            //return datastore.save({"key": ship_key, "data": ship[0]});
-        ///}
-    //});
 }
 
 
@@ -232,16 +247,16 @@ function get_ship_cargo(req, ship_id) {
     let q = datastore.createQuery(CARGO)
         .filter('carrier.id', '=', ship_id) // Filter by ship
         .limit(PAGE_LIMIT); // Limit results for pagination
-    const cargo_results = {};
-    if(Object.keys(req.query).includes("cursor")) {
-        q = q.start(req.query.cursor);
+        const cargo_results = {};
+        if(Object.keys(req.query).includes("cursor")) {
+            q = q.start(req.query.cursor);
     }
 
     return datastore.runQuery(q).then((entities) => {
         cargo_results.items = entities[0].map(ds.fromDataStore); 
         // Check for additional pages
         if(entities[1].moreResults !== ds.Datastore.NO_MORE_RESULTS) {
-            cargo_results.next = req.protocol + "://" + req.get("host") + 'ships/'
+            cargo_results.next = req.protocol + "://" + req.get("host") + '/ships/'
             + ship_id + '/cargo'+ "?cursor=" + entities[1].endCursor; 
         }
         return cargo_results;

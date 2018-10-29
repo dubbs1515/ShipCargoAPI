@@ -160,7 +160,7 @@ router.get('/', function(req, res) {
 
 
 /******************************************************************************
- * Route: GET /id
+ * Route: GET /cargo/id
  * Description: Returns the ship entity specified by the id parameter.
  *****************************************************************************/
 router.get('/:id', function(req, res) {
